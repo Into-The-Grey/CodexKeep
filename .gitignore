@@ -4,3 +4,4 @@ venv
 
 # Ignore .env files
 .env
+.vscode/settings.json
