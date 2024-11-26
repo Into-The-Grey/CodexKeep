@@ -1,12 +1,14 @@
 # CodexKeep Initialization Script with .env Integration
 # Purpose: Fetch, batch, and store data from Bungie API to PostgreSQL securely
 
+import os
+import sys
+import time
+import traceback
 import requests
 import psycopg2
-from psycopg2 import sql
 from dotenv import load_dotenv
-import os
-import time
+from psycopg2 import sql
 
 # Load environment variables
 load_dotenv()
@@ -27,12 +29,6 @@ HEADERS = {"X-API-Key": API_KEY}
 # CodexKeep Initialization Script - Phase 1: Setup and Connection
 # Purpose: Initialize API and database connections, validate configurations, and prepare for data operations
 
-import requests
-import psycopg2
-from psycopg2 import sql
-from dotenv import load_dotenv
-import os
-import sys
 
 # ---------------------------
 # STEP 1: Load Environment Variables
@@ -146,8 +142,6 @@ def initialize_connections():
 # CodexKeep Initialization Script - Phase 2: Error Handling and Logging
 # Purpose: Log errors, handle failures gracefully, and ensure detailed diagnostics for recovery
 
-import time
-import traceback
 
 # ---------------------------
 # STEP 1: Error Logging
@@ -254,7 +248,6 @@ def log_batch_error(batch_num, error_message):
 # CodexKeep Initialization Script - Phase 3: Data Fetching
 # Purpose: Fetch the Manifest and related Definitions from the Bungie API
 
-import requests
 
 # ---------------------------
 # STEP 1: Fetch the Manifest
