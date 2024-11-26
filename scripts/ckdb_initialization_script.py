@@ -99,7 +99,9 @@ def test_api_connection():
 
     try:
         response = requests.get(
-            "https://www.bungie.net/Platform/Destiny2/Manifest/", headers=headers, timeout=10
+            "https://www.bungie.net/Platform/Destiny2/Manifest/",
+            headers=headers,
+            timeout=10,
         )
         if response.status_code == 200:
             print("[INFO] Bungie API connection successful")
@@ -696,12 +698,16 @@ def insert_batch_to_db(conn, batch, current_batch_number):
         conn.commit()
         batch_size = len(batch)
         total_inserted += batch_size
-        print(f"[INFO] Batch {current_batch_number}: Successfully inserted {batch_size} items.")
+        print(
+            f"[INFO] Batch {current_batch_number}: Successfully inserted {batch_size} items."
+        )
     except psycopg2.Error as e:
         log_batch_error(current_batch_number, f"Database error: {e}")
         conn.rollback()  # Rollback the transaction on failure
     except Exception as e:
-        log_batch_error(current_batch_number, f"Unexpected error during batch insertion: {e}")
+        log_batch_error(
+            current_batch_number, f"Unexpected error during batch insertion: {e}"
+        )
     finally:
         current_batch.clear()  # Clear the batch after processing
 
