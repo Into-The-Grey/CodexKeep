@@ -1,7 +1,12 @@
-Node_modules/
+# gitignore file 
+# Ignore the node_modules directory
+node_modules/
 
+# Ignore the virtual environment
 venv
 
 # Ignore .env files
 .env
+
+# Ignore .vscode settings
 .vscode/settings.json
