@@ -460,6 +460,39 @@ def process_item_data(items):
     return processed_items_list
 
 
+def process_item_drops(activity_definitions, item_definitions):
+    """
+    Map item drops to activities and enemies based on activity definitions.
+    :param activity_definitions: JSON object containing all activity definitions.
+    :param item_definitions: JSON object containing all item definitions.
+    :return: Tuple of two lists for ActivityDrops and EnemyDrops.
+    """
+    print("[INFO] Processing item drops...")
+    local_activity_drops = []
+    local_enemy_drops = []
+
+    for activity_id, activity_data in activity_definitions.items():
+        try:
+            if "rewards" in activity_data:
+                for reward in activity_data["rewards"]:
+                    item_hash = reward.get("itemHash")
+                    if item_hash in item_definitions:
+                        local_activity_drops.append(
+                            {
+                                "activity_id": activity_id,
+                                "item_id": item_hash,
+                                "drop_rate": reward.get(
+                                    "dropChance", 1.0
+                                ),  # Example logic
+                            }
+                        )
+        except KeyError as e:
+            log_error(f"Failed to process drops for activity {activity_id}: {e}")
+
+    print(f"[INFO] Processed {len(local_activity_drops)} activity drops.")
+    return local_activity_drops, local_enemy_drops
+
+
 # ---------------------------
 # STEP 5: Process Enemies Data
 # ---------------------------
@@ -905,6 +938,13 @@ if __name__ == "__main__":
     processed_locations = process_locations_data(locations_table)
     processed_vendors = process_vendors_data(vendors_table)
     processed_quests = process_quests_data(quests_table)
+
+    # Fetch data for ItemDrops
+    activity_drops, enemy_drops = process_item_drops(activities_table, items_table)
+
+    # Debug: Print a sample drop
+    if activity_drops:
+        print("[DEBUG] Sample activity drop:", activity_drops[0])
 
     print("[INFO] Full data fetching and processing completed successfully.")
 
