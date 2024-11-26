@@ -11,10 +11,13 @@ from dotenv import load_dotenv
 from psycopg2 import sql
 
 # Load environment variables
-load_dotenv()
+# (Removed redundant load_dotenv() call)
 
 # Get sensitive credentials from .env
 API_KEY = os.getenv("API_KEY")
+if not API_KEY:
+    print("[ERROR] Missing required environment variables: API_KEY")
+    sys.exit(1)
 DB_CONFIG = {
     "dbname": os.getenv("DB_NAME"),
     "user": os.getenv("DB_USER"),
@@ -94,8 +97,7 @@ def test_api_connection():
     """
     Test connection to the Bungie API and validate API key.
     """
-    api_key = os.getenv("API_KEY")
-    headers = {"X-API-Key": api_key}
+    headers = {"X-API-Key": API_KEY}
 
     try:
         response = requests.get(
@@ -108,7 +110,9 @@ def test_api_connection():
             return True
         elif response.status_code == 401:
             print("[ERROR] Invalid API key. Please check your .env file.")
-            sys.exit(1)
+            print(
+                "[ERROR] Invalid API key. Please check your .env file and ensure the API_KEY is correctly set."
+            )
         else:
             print(f"[ERROR] Bungie API returned status code {response.status_code}")
             sys.exit(1)
@@ -133,9 +137,14 @@ def initialize_connections():
 
     # Initialize database connection
     db_connection = connect_to_db()
+    if not db_connection:
+        handle_error(
+            "Database connection failed. Terminating script.", exit_on_failure=True
+        )
 
     # Test API connection
-    test_api_connection()
+    if not test_api_connection():
+        handle_error("API connection failed. Terminating script.", exit_on_failure=True)
 
     print("[INFO] Initialization phase completed successfully.")
     return db_connection
@@ -262,7 +271,14 @@ def fetch_manifest():
     :return: Manifest JSON object or None if the fetch fails.
     """
     print("[INFO] Fetching Manifest...")
-    headers = {"X-API-Key": os.getenv("API_KEY")}
+    api_key = os.getenv("API_KEY")
+    if not api_key:
+        handle_error(
+            "API key is missing. Please check your .env file.", exit_on_failure=True
+        )
+        return None
+
+    headers = {"X-API-Key": api_key}
     manifest_url = "https://www.bungie.net/Platform/Destiny2/Manifest/"
 
     try:
@@ -270,6 +286,11 @@ def fetch_manifest():
         if response.status_code == 200:
             print("[INFO] Successfully fetched Manifest.")
             return response.json()
+        elif response.status_code == 401:
+            handle_error(
+                "Invalid API key. Please check your .env file.", exit_on_failure=True
+            )
+            return None
         else:
             log_error(f"Manifest fetch failed: {response.status_code} {response.text}")
             return None
@@ -314,6 +335,13 @@ def fetch_definitions(definition_url, component_name):
     :param component_name: The name of the component being fetched.
     :return: JSON object containing all definitions or None if the fetch fails.
     """
+    if definition_url is None:
+        handle_error(
+            f"Definition URL for {component_name} is None. Skipping fetch.",
+            exit_on_failure=False,
+        )
+        return None
+
     print(f"[INFO] Fetching {component_name} definitions...")
     headers = {"X-API-Key": os.getenv("API_KEY")}
 
@@ -710,6 +738,10 @@ def insert_batch_to_db(conn, batch, current_batch_number):
     """
     global total_inserted
 
+    if conn is None:
+        log_batch_error(current_batch_number, "Database connection is None.")
+        return
+
     try:
         cur = conn.cursor()
         for item in batch:
@@ -815,6 +847,12 @@ def validate_all_items(conn):
     Validate all rows in the Items table to ensure they meet the defined criteria.
     :param conn: Active database connection.
     """
+    if conn is None:
+        handle_error(
+            "Database connection is None. Cannot validate items.", exit_on_failure=True
+        )
+        return
+
     print("[INFO] Starting validation of database records...")
 
     try:
