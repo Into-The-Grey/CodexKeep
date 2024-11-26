@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 from psycopg2 import sql
 
 # Load environment variables
-# (Removed redundant load_dotenv() call)
 
 # Get sensitive credentials from .env
 API_KEY = os.getenv("API_KEY")
@@ -107,12 +106,9 @@ def test_api_connection():
         )
         if response.status_code == 200:
             print("[INFO] Bungie API connection successful")
-            return True
-        elif response.status_code == 401:
+        if response.status_code == 401:
             print("[ERROR] Invalid API key. Please check your .env file.")
-            print(
-                "[ERROR] Invalid API key. Please check your .env file and ensure the API_KEY is correctly set."
-            )
+            print("[ERROR] Invalid API key. Please check your .env file and ensure the API_KEY is correctly set.")
         else:
             print(f"[ERROR] Bungie API returned status code {response.status_code}")
             sys.exit(1)
@@ -124,6 +120,22 @@ def test_api_connection():
 # ---------------------------
 # STEP 4: Initialize and Test Everything
 # ---------------------------
+
+
+def handle_critical_error(error_message, exit_on_failure=False):
+    """
+    Handle an error by logging it and deciding whether to proceed or exit.
+    :param error_message: A description of the error.
+    :param exit_on_failure: Whether the script should terminate after this error (default: False).
+    """
+    log_error(error_message)
+
+    if exit_on_failure:
+        print("[INFO] Terminating script due to critical error.")
+        sys.exit(1)  # Exit with failure status
+    else:
+        print("[INFO] Attempting to recover from error...")
+        time.sleep(3)  # Optional recovery delay
 
 
 def initialize_connections():
@@ -138,13 +150,13 @@ def initialize_connections():
     # Initialize database connection
     db_connection = connect_to_db()
     if not db_connection:
-        handle_error(
+        handle_critical_error(
             "Database connection failed. Terminating script.", exit_on_failure=True
         )
 
     # Test API connection
     if not test_api_connection():
-        handle_error("API connection failed. Terminating script.", exit_on_failure=True)
+        handle_critical_error("API connection failed. Terminating script.", exit_on_failure=True)
 
     print("[INFO] Initialization phase completed successfully.")
     return db_connection
@@ -273,7 +285,7 @@ def fetch_manifest():
     print("[INFO] Fetching Manifest...")
     api_key = os.getenv("API_KEY")
     if not api_key:
-        handle_error(
+        handle_critical_error(
             "API key is missing. Please check your .env file.", exit_on_failure=True
         )
         return None
@@ -848,7 +860,7 @@ def validate_all_items(conn):
     :param conn: Active database connection.
     """
     if conn is None:
-        handle_error(
+        handle_critical_error(
             "Database connection is None. Cannot validate items.", exit_on_failure=True
         )
         return
@@ -952,7 +964,7 @@ if __name__ == "__main__":
     # Fetch the Manifest
     manifest = fetch_manifest()
     if manifest is None:
-        handle_error("Manifest fetch failed. Terminating script.", exit_on_failure=True)
+        handle_critical_error("Manifest fetch failed. Terminating script.", exit_on_failure=True)
 
     # Fetch and process data for each component
     component_urls = {
@@ -998,7 +1010,7 @@ if __name__ == "__main__":
         connection = connect_to_db()  # Reuse the connection function from Phase 1
         process_items_in_batches(connection, processed_items)
     except Exception as e:
-        handle_error(
+        handle_critical_error(
             f"Critical error during batch processing: {e}", exit_on_failure=True
         )
     finally:
@@ -1020,7 +1032,7 @@ if __name__ == "__main__":
         validate_all_items(connection)
         debug_invalid_rows()
     except Exception as e:
-        handle_error(f"Critical error during validation: {e}", exit_on_failure=True)
+        handle_critical_error(f"Critical error during validation: {e}", exit_on_failure=True)
     finally:
         if connection:
             connection.close()  # Ensure the database connection is properly closed
