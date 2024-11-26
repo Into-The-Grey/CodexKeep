@@ -106,15 +106,14 @@ def test_api_connection():
         )
         if response.status_code == 200:
             print("[INFO] Bungie API connection successful")
-        if response.status_code == 401:
+            return True
+        elif response.status_code == 401:
             print("[ERROR] Invalid API key. Please check your .env file.")
-            print("[ERROR] Invalid API key. Please check your .env file and ensure the API_KEY is correctly set.")
         else:
             print(f"[ERROR] Bungie API returned status code {response.status_code}")
-            sys.exit(1)
     except requests.exceptions.RequestException as e:
         print(f"[ERROR] Failed to connect to the Bungie API: {e}")
-        sys.exit(1)
+    return False
 
 
 # ---------------------------
@@ -156,7 +155,9 @@ def initialize_connections():
 
     # Test API connection
     if not test_api_connection():
-        handle_critical_error("API connection failed. Terminating script.", exit_on_failure=True)
+        handle_critical_error(
+            "API connection failed. Terminating script.", exit_on_failure=True
+        )
 
     print("[INFO] Initialization phase completed successfully.")
     return db_connection
@@ -957,14 +958,15 @@ if __name__ == "__main__":
 # MAIN EXECUTION FOR PHASE 3
 # ---------------------------
 
-
 if __name__ == "__main__":
     print("[INFO] Starting full data fetching and processing...")
 
     # Fetch the Manifest
     manifest = fetch_manifest()
     if manifest is None:
-        handle_critical_error("Manifest fetch failed. Terminating script.", exit_on_failure=True)
+        handle_critical_error(
+            "Manifest fetch failed. Terminating script.", exit_on_failure=True
+        )
 
     # Fetch and process data for each component
     component_urls = {
@@ -1032,7 +1034,9 @@ if __name__ == "__main__":
         validate_all_items(connection)
         debug_invalid_rows()
     except Exception as e:
-        handle_critical_error(f"Critical error during validation: {e}", exit_on_failure=True)
+        handle_critical_error(
+            f"Critical error during validation: {e}", exit_on_failure=True
+        )
     finally:
         if connection:
             connection.close()  # Ensure the database connection is properly closed
