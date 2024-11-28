@@ -271,24 +271,11 @@ BATCH_ERRORS = []  # Specific tracking for batch processing
 def log_batch_error(batch_num, error_message):
     """
     Log an error specific to a batch during processing.
-    :param batch_num: The number of the batch that encountered the error.
-    :param error_message: A description of the error.
+    :param batch_num: The batch number where the error occurred.
+    :param error_message: The error message to log.
     """
-    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    log_entry = f"[{timestamp}] BATCH {batch_num}: {error_message}"
-
-    # Add to batch-specific log
-    BATCH_ERRORS.append(log_entry)
-
-    # Append to persistent log file
-    try:
-        with open(ERROR_LOG_FILE, "a", encoding="utf-8") as file:
-            file.write(log_entry + "\n")
-    except IOError as e:
-        print(f"[ERROR] Failed to write to log file: {e}")
-
-    # Print to console for immediate feedback
-    print(log_entry)
+    error_entry = {"batch_num": batch_num, "error_message": error_message}
+    BATCH_ERRORS.append(error_entry)
 
 
 # CodexKeep Initialization Script - Phase 3: Data Fetching
@@ -580,7 +567,9 @@ def process_item_drops(activity_definitions, item_definitions):
         except KeyError as e:
             log_error(f"Failed to process drops for activity {activity_id}: {e}")
         except Exception as e:
-            log_error(f"Unexpected error while processing drops for activity {activity_id}: {e}")
+            log_error(
+                f"Unexpected error while processing drops for activity {activity_id}: {e}"
+            )
     return local_activity_drops, []
 
 
