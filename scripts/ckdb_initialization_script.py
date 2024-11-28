@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from psycopg2 import sql
 
 # Load environment variables
+load_dotenv()
 
 # Get sensitive credentials from .env
 API_KEY = os.getenv("API_KEY")
@@ -142,25 +143,40 @@ def initialize_connections():
     Load environment variables, initialize database and API connections.
     """
     print("[INFO] Starting initialization phase...")
-
-    # Load and validate environment variables
     load_env_variables()
-
-    # Initialize database connection
     db_connection = connect_to_db()
-    if not db_connection:
-        handle_critical_error(
-            "Database connection failed. Terminating script.", exit_on_failure=True
-        )
+    api_status = test_api_connection()
 
-    # Test API connection
-    if not test_api_connection():
+    if not api_status:
         handle_critical_error(
             "API connection failed. Terminating script.", exit_on_failure=True
         )
 
-    print("[INFO] Initialization phase completed successfully.")
     return db_connection
+
+
+# ---------------------------
+# STEP 5: Safe Execution Wrapper
+# ---------------------------
+
+
+def safe_execute_with_logging(function, *args, **kwargs):
+    """
+    Safely execute a function, logging and handling any exceptions that occur.
+    :param function: The function to execute.
+    :param args: Positional arguments for the function.
+    :param kwargs: Keyword arguments for the function.
+    :return: The function's result, or None if an exception occurred.
+    """
+    try:
+        return function(*args, **kwargs)
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        log_error(
+            f"Unhandled exception in {function.__name__}: {str(e)}\n{error_trace}",
+            is_critical=True,
+        )
+        return None
 
 
 # CodexKeep Initialization Script - Phase 2: Error Handling and Logging
@@ -325,14 +341,21 @@ def get_manifest_component_url(manifest_data, component_name):
     :return: Full URL to the component definitions or None if parsing fails.
     """
     try:
-        path = manifest_data["Response"]["jsonWorldComponentContentPaths"]["en"][
-            component_name
-        ]
-        full_url = f"https://www.bungie.net{path}"
-        print(f"[INFO] Successfully extracted URL for {component_name} from Manifest.")
-        return full_url
-    except KeyError as e:
-        handle_error(f"KeyError when parsing Manifest for {component_name}: {e}")
+        paths = manifest_data.get("Response", {}).get(
+            "jsonWorldComponentContentPaths", {}
+        )
+        path = paths.get("en", {}).get(component_name)
+        if path:
+            full_url = f"https://www.bungie.net{path}"
+            print(
+                f"[INFO] Successfully extracted URL for {component_name} from Manifest."
+            )
+            return full_url
+        else:
+            log_error(f"Component {component_name} is missing in Manifest.")
+            return None
+    except Exception as e:
+        handle_error(f"Error parsing Manifest for {component_name}: {e}")
         return None
 
 
@@ -593,6 +616,10 @@ def process_locations_data(location_definitions):
 
     for location_id, location_data in location_definitions.items():
         try:
+            if "displayProperties" not in location_data:
+                log_error(f"Missing displayProperties for location {location_id}")
+                continue
+
             name = location_data["displayProperties"]["name"]
             location_type = location_data.get("locationType", "Unknown")
             parent_location = location_data.get("parentLocationHash", None)
@@ -927,7 +954,7 @@ if __name__ == "__main__":
     # Initialize connections and prepare for next phases
     connection = initialize_connections()
     if not test_api_connection():
-        exit(1)
+        sys.exit(1)
 
 # ---------------------------
 # MAIN EXECUTION FOR PHASE 2
@@ -950,7 +977,7 @@ if __name__ == "__main__":
     def sample_function(a, b):
         return a / b  # This will cause a division by zero error if b == 0
 
-    safe_execute(sample_function, 10, 0)
+    safe_execute_with_logging(sample_function, 10, 0)
 
     print("[INFO] Error handling tests completed.")
 
@@ -960,6 +987,9 @@ if __name__ == "__main__":
 
 if __name__ == "__main__":
     print("[INFO] Starting full data fetching and processing...")
+
+    # Initialize connections
+    db_conn = initialize_connections()
 
     # Fetch the Manifest
     manifest = fetch_manifest()
@@ -976,6 +1006,13 @@ if __name__ == "__main__":
         "vendors": get_manifest_component_url(manifest, "DestinyVendorDefinition"),
         "quests": get_manifest_component_url(manifest, "DestinyQuestDefinition"),
     }
+
+    # Ensure component URLs are valid
+    if not all(component_urls.values()):
+        handle_critical_error(
+            "One or more component URLs are invalid. Terminating script.",
+            exit_on_failure=True,
+        )
 
     # Fetch data for each table
     items_table = fetch_definitions(component_urls["items"], "Items")

@@ -1,31 +1,38 @@
-import { useEffect, useState } from "react";
+// src/components/ItemsList.js
+import React, { useEffect, useState } from 'react';
 
-export default function ItemsList() {
+function ItemsList() {
     const [items, setItems] = useState([]);
-    const [error, setError] = useState(null);
 
     useEffect(() => {
-        fetch('/api/items') // Ensure your backend serves this endpoint
-            .then((res) => {
-                if (!res.ok) throw new Error('Failed to fetch items');
-                return res.json();
+        fetch('http://localhost:3000/items')
+            .then((response) => response.json())
+            .then((data) => {
+                setItems(data);
             })
-            .then((data) => setItems(data))
-            .catch((err) => setError(err.message));
+            .catch((error) => {
+                console.error('Error fetching items:', error);
+            });
     }, []);
-
-    if (error) return <div>Error: {error}</div>;
 
     return (
         <div>
-            <h2>Items</h2>
-            <ul>
-                {items.map((item) => (
-                    <li key={item.item_id}>
-                        <strong>{item.name}</strong> ({item.rarity})
-                    </li>
-                ))}
-            </ul>
+            <h1>Items</h1>
+            {items.length === 0 ? (
+                <p>No items found.</p>
+            ) : (
+                <ul>
+                    {items.map((item) => (
+                        <li key={item.ItemID}>
+                            <strong>{item.Name}</strong> ({item.Rarity})
+                            <p>{item.Description}</p>
+                            {item.ImageURL && <img src={item.ImageURL} alt={item.Name} width="100" />}
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     );
 }
+
+export default ItemsList;
