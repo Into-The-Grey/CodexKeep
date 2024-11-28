@@ -206,8 +206,11 @@ def log_error(error_message, is_critical=False):
     ERROR_LOG.append(log_entry)
 
     # Append to persistent log file
-    with open(ERROR_LOG_FILE, "a", encoding="utf-8") as file:
-        file.write(log_entry + "\n")
+    try:
+        with open(ERROR_LOG_FILE, "a", encoding="utf-8") as file:
+            file.write(log_entry + "\n")
+    except IOError as e:
+        print(f"[ERROR] Failed to write to log file: {e}")
 
     # Print to console for immediate feedback
     print(log_entry)
@@ -278,8 +281,11 @@ def log_batch_error(batch_num, error_message):
     BATCH_ERRORS.append(log_entry)
 
     # Append to persistent log file
-    with open(ERROR_LOG_FILE, "a", encoding="utf-8") as file:
-        file.write(log_entry + "\n")
+    try:
+        with open(ERROR_LOG_FILE, "a", encoding="utf-8") as file:
+            file.write(log_entry + "\n")
+    except IOError as e:
+        print(f"[ERROR] Failed to write to log file: {e}")
 
     # Print to console for immediate feedback
     print(log_entry)
