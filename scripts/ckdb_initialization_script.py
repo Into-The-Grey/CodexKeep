@@ -532,35 +532,56 @@ def process_item_data(items):
 
 def process_item_drops(activity_definitions, item_definitions):
     """
-    Map item drops to activities and enemies based on activity definitions.
+    Map item drops to activities based on activity definitions.
     :param activity_definitions: JSON object containing all activity definitions.
     :param item_definitions: JSON object containing all item definitions.
-    :return: Tuple of two lists for ActivityDrops and EnemyDrops.
+    :return: A tuple containing a list of dictionaries representing activity drops and an empty list for enemy drops.
     """
     print("[INFO] Processing item drops...")
     local_activity_drops = []
-    local_enemy_drops = []
 
     for activity_id, activity_data in activity_definitions.items():
         try:
-            if "rewards" in activity_data:
+            # Ensure the activity contains rewards
+            if "rewards" in activity_data and isinstance(
+                activity_data["rewards"], list
+            ):
                 for reward in activity_data["rewards"]:
+                    # Extract item hash and drop chance
                     item_hash = reward.get("itemHash")
+                    drop_chance = reward.get("dropChance", 0.0)
+
+                    if not item_hash:
+                        log_error(
+                            f"Missing itemHash in rewards for activity {activity_id}"
+                        )
+                        continue
+
+                    # Validate drop chance and map to item
+                    if not 0 <= drop_chance <= 1:
+                        log_error(
+                            f"Invalid dropChance value ({drop_chance}) in activity {activity_id}. Defaulting to 0.0"
+                        )
+                        drop_chance = 0.0
+
+                    # Check if item exists in item definitions
                     if item_hash in item_definitions:
                         local_activity_drops.append(
                             {
                                 "activity_id": activity_id,
                                 "item_id": item_hash,
-                                "drop_rate": reward.get(
-                                    "dropChance", 1.0
-                                ),  # Example logic
+                                "drop_rate": drop_chance,
                             }
+                        )
+                    else:
+                        log_error(
+                            f"Item hash {item_hash} in activity {activity_id} does not exist in item definitions."
                         )
         except KeyError as e:
             log_error(f"Failed to process drops for activity {activity_id}: {e}")
-
-    print(f"[INFO] Processed {len(local_activity_drops)} activity drops.")
-    return local_activity_drops, local_enemy_drops
+        except Exception as e:
+            log_error(f"Unexpected error while processing drops for activity {activity_id}: {e}")
+    return local_activity_drops, []
 
 
 # ---------------------------
@@ -579,27 +600,45 @@ def process_enemies_data(activity_definitions):
 
     for activity_id, activity_data in activity_definitions.items():
         try:
-            # Example: Enemy data derived from activity encounter data
-            if "phases" in activity_data:
+            # Ensure 'phases' key exists and is a list
+            if "phases" in activity_data and isinstance(activity_data["phases"], list):
                 for phase in activity_data["phases"]:
+                    # Extract enemy details
+                    enemy_id = f"{activity_id}_{phase.get('id', 'unknown')}"
                     enemy_name = phase.get("name", "Unknown Enemy")
-                    health = phase.get("health", 0)
+                    health = phase.get("health", 100)  # Default to 100 if not specified
                     damage_type = phase.get("damageType", "None")
                     zone_id = activity_data.get("locationHash", None)
 
+                    # Validate and normalize data
+                    if not enemy_name.strip():
+                        log_error(f"Enemy name is missing in activity {activity_id}.")
+                        enemy_name = "Unnamed Enemy"
+
+                    if not isinstance(health, (int, float)) or health <= 0:
+                        log_error(
+                            f"Invalid health value ({health}) for enemy in activity {activity_id}. Defaulting to 100."
+                        )
+                        health = 100
+
+                    # Append processed enemy data
                     processed_enemies.append(
                         {
-                            "enemy_id": f"{activity_id}_{phase['id']}",
+                            "enemy_id": enemy_id,
                             "name": enemy_name,
-                            "type_id": activity_data.get("activityTypeHash"),
-                            "zone_id": zone_id,
                             "health": health,
                             "damage_type": damage_type,
+                            "zone_id": zone_id,
+                            "activity_id": activity_id,
                         }
                     )
         except KeyError as e:
             log_error(
                 f"Failed to process enemy in activity {activity_id}: Missing key {e}"
+            )
+        except Exception as e:
+            log_error(
+                f"Unexpected error while processing enemies for activity {activity_id}: {e}"
             )
 
     print(f"[INFO] Successfully processed {len(processed_enemies)} enemies.")
@@ -765,7 +804,15 @@ def process_currencies_data(item_definitions):
 # STEP 1: Batch Processing Parameters
 # ---------------------------
 
-BATCH_SIZE = 2500  # Number of items per batch
+# Define batch size dynamically based on environment variable or fallback default
+try:
+    BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))  # Default to 1000 if not set
+    if BATCH_SIZE <= 0:
+        raise ValueError("Batch size must be greater than 0.")
+except ValueError as e:
+    log_error(f"Invalid BATCH_SIZE value: {e}. Defaulting to 1000.")
+    BATCH_SIZE = 1000
+
 current_batch = []  # Temporary storage for current batch of items
 total_inserted = 0  # Track the total number of successful insertions
 batch_number = 0  # Track the current batch number
@@ -837,6 +884,8 @@ def process_items_in_batches(conn, items):
     global batch_number
     count = 0
 
+    print(f"[INFO] Using a batch size of {BATCH_SIZE} items per batch.")
+
     for item in items:
         current_batch.append(item)
         count += 1
@@ -868,18 +917,52 @@ def validate_item_row(row):
     :param row: Tuple containing item data from the database.
     :return: True if the row is valid, False otherwise.
     """
-    # Example: Validate that essential fields are not empty or null
-    item_id, name, description, rarity, icon = row
+    # Unpack row elements
+    try:
+        item_id, name, description, rarity, icon = row
+    except ValueError as e:
+        log_error(f"Row unpacking error: {e}")
+        return False
 
-    if not item_id or not name or not rarity:
-        return False  # Essential fields must not be empty or null
+    # Validate essential fields
+    if not item_id or not isinstance(item_id, (str, int)):
+        log_error(f"Invalid or missing item_id: {item_id}")
+        return False
+    if not name or not isinstance(name, str) or len(name.strip()) == 0:
+        log_error(f"Invalid or missing name: {name}")
+        return False
+    if not rarity or not isinstance(rarity, str):
+        log_error(f"Invalid or missing rarity: {rarity}")
+        return False
+
+    # Validate string length constraints
     if len(name) > 255:
-        return False  # Name should not exceed the VARCHAR limit
+        log_error(f"Name exceeds maximum length of 255 characters: {name}")
+        return False
     if description and len(description) > 1000:
-        return False  # Description should not exceed the VARCHAR limit
-    if icon and not icon.startswith("https://"):
-        return False  # Icon URL must be a valid HTTPS URL
+        log_error(
+            f"Description exceeds maximum length of 1000 characters: {description}"
+        )
+        return False
 
+    # Validate icon URL (if provided)
+    if icon:
+        if not isinstance(icon, str):
+            log_error(f"Invalid icon value: {icon}")
+            return False
+        if not icon.startswith("https://"):
+            log_error(f"Icon URL must start with 'https://': {icon}")
+            return False
+
+    # Validate rarity against known tiers
+    valid_rarity_values = {"Common", "Uncommon", "Rare", "Legendary", "Exotic"}
+    if rarity not in valid_rarity_values:
+        log_error(
+            f"Invalid rarity value: {rarity}. Expected one of {valid_rarity_values}"
+        )
+        return False
+
+    # If all validations pass
     return True
 
 

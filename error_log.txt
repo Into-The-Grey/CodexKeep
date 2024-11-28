@@ -954,3 +954,33 @@ ZeroDivisionError: division by zero
 [2024-11-26 09:27:47] ERROR: Failed to process location 872958803: Missing key 'displayProperties'
 [2024-11-26 09:27:47] ERROR: Failed to process location 872958802: Missing key 'displayProperties'
 [2024-11-26 09:27:47] ERROR: Failed to process location 872958805: Missing key 'displayProperties'
+[2024-11-28 03:32:28] ERROR: Test error: Something went wrong during initialization.
+[2024-11-28 03:32:28] ERROR: Test critical error: Failed to load API key.
+[2024-11-28 03:32:31] BATCH 5: Test batch error: Failed to process batch 5.
+[2024-11-28 03:32:31] CRITICAL: Unhandled exception in sample_function: division by zero
+Traceback (most recent call last):
+  File "/home/ncacord/CodexKeep/scripts/ckdb_initialization_script.py", line 172, in safe_execute_with_logging
+    return function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ncacord/CodexKeep/scripts/ckdb_initialization_script.py", line 1067, in sample_function
+    return a / b  # This will cause a division by zero error if b == 0
+           ~~^~~
+ZeroDivisionError: division by zero
+
+[2024-11-28 03:32:31] ERROR: Component DestinyQuestDefinition is missing in Manifest.
+[2024-11-28 03:32:31] ERROR: One or more component URLs are invalid. Terminating script.
+[2024-11-28 03:34:11] ERROR: Test error: Something went wrong during initialization.
+[2024-11-28 03:34:11] ERROR: Test critical error: Failed to load API key.
+[2024-11-28 03:34:14] BATCH 5: Test batch error: Failed to process batch 5.
+[2024-11-28 03:34:14] CRITICAL: Unhandled exception in sample_function: division by zero
+Traceback (most recent call last):
+  File "/home/ncacord/CodexKeep/scripts/ckdb_initialization_script.py", line 172, in safe_execute_with_logging
+    return function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ncacord/CodexKeep/scripts/ckdb_initialization_script.py", line 1067, in sample_function
+    return a / b  # This will cause a division by zero error if b == 0
+           ~~^~~
+ZeroDivisionError: division by zero
+
+[2024-11-28 03:34:14] ERROR: Component DestinyQuestDefinition is missing in Manifest.
+[2024-11-28 03:34:14] ERROR: One or more component URLs are invalid. Terminating script.
