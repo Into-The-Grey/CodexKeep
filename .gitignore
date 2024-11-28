@@ -1,4 +1,4 @@
-# gitignore file 
+# gitignore file
 # Ignore the node_modules directory
 node_modules/
 
@@ -10,3 +10,6 @@ venv
 
 # Ignore .vscode settings
 .vscode/settings.json
+
+# Ignore python cache files
+**/__pycache__/**
